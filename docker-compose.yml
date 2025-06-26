@@ -1,0 +1,180 @@
+version: '3.8'
+
+services:
+  ai-os-api:
+    image: node:20-alpine
+    networks:
+      - network_public
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      # Redis - usando nome correto do serviço
+      - REDIS_HOST=redis_redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # Neo4j - usando nome correto do serviço
+      - NEO4J_URI=bolt://neo4j_neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      # PostgreSQL - usando nome correto do serviço
+      - POSTGRES_HOST=postgres_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_os
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # Application
+      - JWT_SECRET=${JWT_SECRET}
+      - ORCHESTRATOR_API_KEY=${ORCHESTRATOR_API_KEY}
+      - UNIVERSAL_MEMORY_API_KEY=${UNIVERSAL_MEMORY_API_KEY}
+      - CLAUDE_CODE_API_KEY=${CLAUDE_CODE_API_KEY}
+    volumes:
+      - ai-os-data:/app/data
+    deploy:
+      replicas: 2
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=network_public
+        - traefik.http.services.ai-os-api.loadbalancer.server.port=8000
+        - traefik.http.routers.ai-os-api.rule=Host(`ai-os.allfluence.ai`)
+        - traefik.http.routers.ai-os-api.entrypoints=websecure
+        - traefik.http.routers.ai-os-api.tls=true
+        - traefik.http.routers.ai-os-api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.ai-os-api.service=ai-os-api
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    command:
+      - sh
+      - -c
+      - |
+        cd /app
+        # Clone repository
+        apk add --no-cache git
+        git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
+        cd ai-os
+        
+        # Install dependencies
+        npm install --production
+        
+        # Build application
+        npm run build
+        
+        # Start API server
+        npm run start:api
+    working_dir: /app
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  ai-os-worker:
+    image: node:20-alpine
+    networks:
+      - network_public
+    environment:
+      - NODE_ENV=production
+      # Redis - usando nome correto do serviço
+      - REDIS_HOST=redis_redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # Neo4j - usando nome correto do serviço
+      - NEO4J_URI=bolt://neo4j_neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      # PostgreSQL - usando nome correto do serviço
+      - POSTGRES_HOST=postgres_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_os
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # Application
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - ai-os-data:/app/data
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    command:
+      - sh
+      - -c
+      - |
+        cd /app
+        # Clone repository
+        apk add --no-cache git
+        git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
+        cd ai-os
+        
+        # Install dependencies
+        npm install --production
+        
+        # Build application
+        npm run build
+        
+        # Start worker
+        npm run start:worker
+    working_dir: /app
+
+  ai-os-scheduler:
+    image: node:20-alpine
+    networks:
+      - network_public
+    environment:
+      - NODE_ENV=production
+      # Redis - usando nome correto do serviço
+      - REDIS_HOST=redis_redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # PostgreSQL - usando nome correto do serviço
+      - POSTGRES_HOST=postgres_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_os
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command:
+      - sh
+      - -c
+      - |
+        cd /app
+        # Clone repository
+        apk add --no-cache git
+        git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
+        cd ai-os
+        
+        # Install dependencies
+        npm install --production
+        
+        # Build application
+        npm run build
+        
+        # Start scheduler
+        npm run start:scheduler
+    working_dir: /app
+
+volumes:
+  ai-os-data:
+    driver: local
+
+networks:
+  network_public:
+    external: true
