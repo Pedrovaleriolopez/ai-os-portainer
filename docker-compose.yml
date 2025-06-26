@@ -53,50 +53,40 @@ services:
         # Instalar git
         apk add --no-cache git
         
-        # Usar diretório temporário para clone
-        WORK_DIR="/tmp/ai-os-clone"
-        rm -rf $WORK_DIR
-        mkdir -p $WORK_DIR
+        # Clonar o repositório correto
+        cd /tmp
+        rm -rf ai-os
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/ai-os.git
+        cd ai-os
         
-        # Clone o repositório
-        echo "Clonando repositório..."
-        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git $WORK_DIR
-        
-        # Verificar estrutura
         echo "=== Estrutura do repositório ==="
-        ls -la $WORK_DIR/
+        ls -la
         
-        # Procurar pelo projeto correto
-        if [ -d "$WORK_DIR/ai-os" ]; then
-          echo "Diretório ai-os encontrado!"
-          cd $WORK_DIR/ai-os
-        elif [ -f "$WORK_DIR/package.json" ]; then
-          echo "package.json encontrado na raiz!"
-          cd $WORK_DIR
+        # Verificar se existe services/api-gateway
+        if [ -d "services/api-gateway" ]; then
+          echo "Encontrado services/api-gateway"
+          cd services/api-gateway
+        elif [ -d "packages/orchestrator" ]; then
+          echo "Usando packages/orchestrator como API"
+          cd packages/orchestrator
         else
-          echo "ERRO: Estrutura do projeto não reconhecida!"
-          echo "Conteúdo do repositório:"
-          find $WORK_DIR -type f -name "*.json" | head -20
-          find $WORK_DIR -type d -maxdepth 3 | head -20
-          exit 1
+          echo "Usando raiz do projeto"
         fi
         
-        # Instalar dependências e iniciar
+        # Instalar dependências
         echo "Instalando dependências..."
         npm install --production
         
-        echo "Executando build..."
-        npm run build || echo "Build não necessário ou falhou"
-        
-        echo "Iniciando API..."
-        npm run start:api || npm start || node server.js || node index.js
+        # Tentar diferentes comandos de start
+        echo "Iniciando aplicação..."
+        npm run start:api || npm run start || npm run dev || node index.js || node server.js || node src/index.js
     working_dir: /app
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 180s
+      start_period: 240s
 
   ai-os-worker:
     image: node:20-alpine
@@ -137,43 +127,33 @@ services:
         # Instalar git
         apk add --no-cache git
         
-        # Usar diretório temporário para clone
-        WORK_DIR="/tmp/ai-os-clone"
-        rm -rf $WORK_DIR
-        mkdir -p $WORK_DIR
+        # Clonar o repositório
+        cd /tmp
+        rm -rf ai-os
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/ai-os.git
+        cd ai-os
         
-        # Clone o repositório
-        echo "Clonando repositório..."
-        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git $WORK_DIR
-        
-        # Verificar estrutura
         echo "=== Estrutura do repositório ==="
-        ls -la $WORK_DIR/
+        ls -la
         
-        # Procurar pelo projeto correto
-        if [ -d "$WORK_DIR/ai-os" ]; then
-          echo "Diretório ai-os encontrado!"
-          cd $WORK_DIR/ai-os
-        elif [ -f "$WORK_DIR/package.json" ]; then
-          echo "package.json encontrado na raiz!"
-          cd $WORK_DIR
+        # Navegar para o diretório apropriado
+        if [ -d "services/webhook-handler" ]; then
+          echo "Encontrado services/webhook-handler"
+          cd services/webhook-handler
+        elif [ -d "packages/agent-framework" ]; then
+          echo "Usando packages/agent-framework como Worker"
+          cd packages/agent-framework
         else
-          echo "ERRO: Estrutura do projeto não reconhecida!"
-          echo "Conteúdo do repositório:"
-          find $WORK_DIR -type f -name "*.json" | head -20
-          find $WORK_DIR -type d -maxdepth 3 | head -20
-          exit 1
+          echo "Usando raiz do projeto"
         fi
         
-        # Instalar dependências e iniciar
+        # Instalar dependências
         echo "Instalando dependências..."
         npm install --production
         
-        echo "Executando build..."
-        npm run build || echo "Build não necessário ou falhou"
-        
-        echo "Iniciando Worker..."
-        npm run start:worker || npm run worker || node worker.js
+        # Iniciar worker
+        echo "Iniciando worker..."
+        npm run start:worker || npm run worker || npm run start || node worker.js || node src/worker.js
     working_dir: /app
 
   ai-os-scheduler:
@@ -209,43 +189,48 @@ services:
         # Instalar git
         apk add --no-cache git
         
-        # Usar diretório temporário para clone
-        WORK_DIR="/tmp/ai-os-clone"
-        rm -rf $WORK_DIR
-        mkdir -p $WORK_DIR
+        # Clonar o repositório
+        cd /tmp
+        rm -rf ai-os
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/ai-os.git
+        cd ai-os
         
-        # Clone o repositório
-        echo "Clonando repositório..."
-        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git $WORK_DIR
-        
-        # Verificar estrutura
         echo "=== Estrutura do repositório ==="
-        ls -la $WORK_DIR/
+        ls -la
         
-        # Procurar pelo projeto correto
-        if [ -d "$WORK_DIR/ai-os" ]; then
-          echo "Diretório ai-os encontrado!"
-          cd $WORK_DIR/ai-os
-        elif [ -f "$WORK_DIR/package.json" ]; then
-          echo "package.json encontrado na raiz!"
-          cd $WORK_DIR
-        else
-          echo "ERRO: Estrutura do projeto não reconhecida!"
-          echo "Conteúdo do repositório:"
-          find $WORK_DIR -type f -name "*.json" | head -20
-          find $WORK_DIR -type d -maxdepth 3 | head -20
-          exit 1
-        fi
+        # Por enquanto, usar um scheduler simples
+        echo "Criando scheduler básico..."
+        cat > scheduler.js << 'EOF'
+        const Redis = require('redis');
         
-        # Instalar dependências e iniciar
-        echo "Instalando dependências..."
-        npm install --production
+        console.log('AI-OS Scheduler iniciado');
         
-        echo "Executando build..."
-        npm run build || echo "Build não necessário ou falhou"
+        // Configuração Redis
+        const redis = Redis.createClient({
+          url: 'redis://redis_redis:6379'
+        });
         
-        echo "Iniciando Scheduler..."
-        npm run start:scheduler || npm run scheduler || node scheduler.js
+        redis.on('error', err => console.log('Redis Error', err));
+        
+        async function run() {
+          await redis.connect();
+          console.log('Conectado ao Redis');
+          
+          // Loop principal do scheduler
+          setInterval(() => {
+            console.log('Scheduler tick:', new Date().toISOString());
+          }, 60000); // A cada minuto
+        }
+        
+        run().catch(console.error);
+        EOF
+        
+        # Instalar apenas o Redis
+        npm init -y
+        npm install redis
+        
+        # Executar scheduler
+        node scheduler.js
     working_dir: /app
 
 volumes:
