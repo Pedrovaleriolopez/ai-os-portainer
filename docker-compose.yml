@@ -50,27 +50,30 @@ services:
       - sh
       - -c
       - |
+        # Limpar diretório e clonar
+        rm -rf /app/*
         cd /app
-        # Clone repository
         apk add --no-cache git
         git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
-        cd ai-os
         
-        # Install dependencies
-        npm install --production
-        
-        # Build application
-        npm run build
-        
-        # Start API server
-        npm run start:api
+        # Verificar se o diretório ai-os existe
+        if [ -d "ai-os" ]; then
+          cd ai-os
+          npm install --production
+          npm run build
+          npm run start:api
+        else
+          echo "Erro: Diretório ai-os não encontrado!"
+          ls -la
+          exit 1
+        fi
     working_dir: /app
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s
 
   ai-os-worker:
     image: node:20-alpine
@@ -108,20 +111,23 @@ services:
       - sh
       - -c
       - |
+        # Limpar diretório e clonar
+        rm -rf /app/*
         cd /app
-        # Clone repository
         apk add --no-cache git
         git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
-        cd ai-os
         
-        # Install dependencies
-        npm install --production
-        
-        # Build application
-        npm run build
-        
-        # Start worker
-        npm run start:worker
+        # Verificar se o diretório ai-os existe
+        if [ -d "ai-os" ]; then
+          cd ai-os
+          npm install --production
+          npm run build
+          npm run start:worker
+        else
+          echo "Erro: Diretório ai-os não encontrado!"
+          ls -la
+          exit 1
+        fi
     working_dir: /app
 
   ai-os-scheduler:
@@ -152,20 +158,23 @@ services:
       - sh
       - -c
       - |
+        # Limpar diretório e clonar
+        rm -rf /app/*
         cd /app
-        # Clone repository
         apk add --no-cache git
         git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
-        cd ai-os
         
-        # Install dependencies
-        npm install --production
-        
-        # Build application
-        npm run build
-        
-        # Start scheduler
-        npm run start:scheduler
+        # Verificar se o diretório ai-os existe
+        if [ -d "ai-os" ]; then
+          cd ai-os
+          npm install --production
+          npm run build
+          npm run start:scheduler
+        else
+          echo "Erro: Diretório ai-os não encontrado!"
+          ls -la
+          exit 1
+        fi
     working_dir: /app
 
 volumes:
