@@ -2,7 +2,11 @@ version: '3.8'
 
 services:
   ai-os-api:
-    image: node:20-alpine
+    image: ghcr.io/pedrovaleriolopez/ai-os:orchestrator
+    build:
+      context: https://github.com/Pedrovaleriolopez/ai-os.git#main
+      dockerfile: Dockerfile.monorepo
+      target: orchestrator
     networks:
       - network_public
     environment:
@@ -43,52 +47,6 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        echo "=== Iniciando AI-OS API (Versão Mínima) ==="
-        
-        # Criar servidor HTTP simples
-        cat > /tmp/server.js << 'EOF'
-        const http = require('http');
-        
-        const server = http.createServer((req, res) => {
-          console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-          
-          if (req.url === '/health') {
-            res.writeHead(200, {'Content-Type': 'application/json'});
-            res.end(JSON.stringify({
-              status: 'ok',
-              service: 'ai-os-api',
-              version: '1.0.0',
-              timestamp: new Date().toISOString()
-            }));
-          } else {
-            res.writeHead(200, {'Content-Type': 'application/json'});
-            res.end(JSON.stringify({
-              message: 'AI-OS API Running',
-              endpoints: ['/health'],
-              timestamp: new Date().toISOString()
-            }));
-          }
-        });
-        
-        const PORT = process.env.PORT || 8000;
-        server.listen(PORT, '0.0.0.0', () => {
-          console.log(`AI-OS API rodando na porta ${PORT}`);
-        });
-        
-        // Heartbeat
-        setInterval(() => {
-          console.log(`[Heartbeat] API está viva - ${new Date().toISOString()}`);
-        }, 60000);
-        EOF
-        
-        # Executar servidor
-        node /tmp/server.js
-    working_dir: /app
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
       interval: 30s
@@ -97,7 +55,11 @@ services:
       start_period: 60s
 
   ai-os-worker:
-    image: node:20-alpine
+    image: ghcr.io/pedrovaleriolopez/ai-os:agent-framework
+    build:
+      context: https://github.com/Pedrovaleriolopez/ai-os.git#main
+      dockerfile: Dockerfile.monorepo
+      target: agent-framework
     networks:
       - network_public
     environment:
@@ -125,73 +87,18 @@ services:
         reservations:
           cpus: '1'
           memory: 1G
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        echo "=== Iniciando AI-OS Worker (Versão Mínima) ==="
-        
-        # Criar worker básico
-        cat > /tmp/worker.js << 'EOF'
-        console.log('AI-OS Worker iniciado');
-        
-        const WORKER_ID = process.env.HOSTNAME || Math.random().toString(36).substring(7);
-        
-        console.log(`Worker ID: ${WORKER_ID}`);
-        console.log('Configurações:');
-        console.log(`- Redis: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
-        console.log(`- Neo4j: ${process.env.NEO4J_URI}`);
-        console.log(`- Postgres: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}`);
-        
-        // Simulação de processamento
-        async function processJob() {
-          const jobId = Math.random().toString(36).substring(7);
-          console.log(`[${new Date().toISOString()}] Worker ${WORKER_ID} processando job ${jobId}`);
-          
-          // Simular trabalho
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          
-          console.log(`[${new Date().toISOString()}] Worker ${WORKER_ID} completou job ${jobId}`);
-        }
-        
-        // Loop principal
-        async function run() {
-          console.log('Worker rodando...');
-          
-          while (true) {
-            try {
-              await processJob();
-              // Aguardar antes do próximo job
-              await new Promise(resolve => setTimeout(resolve, 10000));
-            } catch (error) {
-              console.error('Erro no worker:', error);
-              await new Promise(resolve => setTimeout(resolve, 5000));
-            }
-          }
-        }
-        
-        // Iniciar
-        run().catch(console.error);
-        
-        // Manter processo vivo
-        process.on('SIGTERM', () => {
-          console.log('Worker recebeu SIGTERM, finalizando...');
-          process.exit(0);
-        });
-        EOF
-        
-        # Executar worker
-        node /tmp/worker.js
-    working_dir: /app
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "node.*worker.js"]
+      test: ["CMD", "pgrep", "-f", "node"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   ai-os-scheduler:
-    image: node:20-alpine
+    image: ghcr.io/pedrovaleriolopez/ai-os:api-gateway  
+    build:
+      context: https://github.com/Pedrovaleriolopez/ai-os.git#main
+      dockerfile: Dockerfile.monorepo
+      target: api-gateway
     networks:
       - network_public
     environment:
@@ -213,70 +120,8 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        echo "=== Iniciando AI-OS Scheduler (Versão Mínima) ==="
-        
-        # Criar scheduler básico
-        cat > /tmp/scheduler.js << 'EOF'
-        console.log('AI-OS Scheduler iniciado');
-        
-        const SCHEDULER_ID = process.env.HOSTNAME || 'scheduler-main';
-        
-        console.log(`Scheduler ID: ${SCHEDULER_ID}`);
-        console.log('Configurações:');
-        console.log(`- Redis: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
-        console.log(`- Postgres: ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}`);
-        
-        // Tarefas agendadas
-        const tasks = [
-          { name: 'cleanup', interval: 300000 },      // 5 minutos
-          { name: 'health-check', interval: 60000 },  // 1 minuto
-          { name: 'sync-data', interval: 600000 }     // 10 minutos
-        ];
-        
-        // Executar tarefa
-        function executeTask(taskName) {
-          const timestamp = new Date().toISOString();
-          console.log(`[${timestamp}] Executando tarefa: ${taskName}`);
-          
-          // Simular execução
-          setTimeout(() => {
-            console.log(`[${timestamp}] Tarefa ${taskName} concluída`);
-          }, 2000);
-        }
-        
-        // Agendar tarefas
-        tasks.forEach(task => {
-          console.log(`Agendando tarefa ${task.name} a cada ${task.interval}ms`);
-          setInterval(() => executeTask(task.name), task.interval);
-          
-          // Executar imediatamente na primeira vez
-          executeTask(task.name);
-        });
-        
-        // Heartbeat
-        setInterval(() => {
-          console.log(`[Heartbeat] Scheduler está vivo - ${new Date().toISOString()}`);
-        }, 30000);
-        
-        // Manter processo vivo
-        process.on('SIGTERM', () => {
-          console.log('Scheduler recebeu SIGTERM, finalizando...');
-          process.exit(0);
-        });
-        
-        console.log('Scheduler rodando...');
-        EOF
-        
-        # Executar scheduler
-        node /tmp/scheduler.js
-    working_dir: /app
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "node.*scheduler.js"]
+      test: ["CMD", "pgrep", "-f", "node"]
       interval: 30s
       timeout: 10s
       retries: 3
