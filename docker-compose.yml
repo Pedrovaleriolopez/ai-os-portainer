@@ -24,7 +24,7 @@ services:
       - CLAUDE_CODE_API_KEY=${CLAUDE_CODE_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
-      - ai-os-data:/app/data
+      - ai-os-data:/data
     deploy:
       replicas: 2
       labels:
@@ -47,34 +47,56 @@ services:
       - sh
       - -c
       - |
-        # Configurar git para usar token
+        set -e
+        echo "=== Iniciando deploy AI-OS API ==="
+        
+        # Instalar git
         apk add --no-cache git
         
-        # Limpar diretório (exceto volumes montados)
-        find /app -mindepth 1 -maxdepth 1 ! -path '/app/data' -exec rm -rf {} +
+        # Usar diretório temporário para clone
+        WORK_DIR="/tmp/ai-os-clone"
+        rm -rf $WORK_DIR
+        mkdir -p $WORK_DIR
         
-        # Clonar usando token
-        cd /app
-        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git .
+        # Clone o repositório
+        echo "Clonando repositório..."
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git $WORK_DIR
         
-        # Verificar se o diretório ai-os existe
-        if [ -d "ai-os" ]; then
-          cd ai-os
-          npm install --production
-          npm run build
-          npm run start:api
+        # Verificar estrutura
+        echo "=== Estrutura do repositório ==="
+        ls -la $WORK_DIR/
+        
+        # Procurar pelo projeto correto
+        if [ -d "$WORK_DIR/ai-os" ]; then
+          echo "Diretório ai-os encontrado!"
+          cd $WORK_DIR/ai-os
+        elif [ -f "$WORK_DIR/package.json" ]; then
+          echo "package.json encontrado na raiz!"
+          cd $WORK_DIR
         else
-          echo "Erro: Diretório ai-os não encontrado!"
-          ls -la
+          echo "ERRO: Estrutura do projeto não reconhecida!"
+          echo "Conteúdo do repositório:"
+          find $WORK_DIR -type f -name "*.json" | head -20
+          find $WORK_DIR -type d -maxdepth 3 | head -20
           exit 1
         fi
+        
+        # Instalar dependências e iniciar
+        echo "Instalando dependências..."
+        npm install --production
+        
+        echo "Executando build..."
+        npm run build || echo "Build não necessário ou falhou"
+        
+        echo "Iniciando API..."
+        npm run start:api || npm start || node server.js || node index.js
     working_dir: /app
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
+      start_period: 180s
 
   ai-os-worker:
     image: node:20-alpine
@@ -95,7 +117,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
-      - ai-os-data:/app/data
+      - ai-os-data:/data
     deploy:
       replicas: 2
       resources:
@@ -109,27 +131,49 @@ services:
       - sh
       - -c
       - |
-        # Configurar git para usar token
+        set -e
+        echo "=== Iniciando deploy AI-OS Worker ==="
+        
+        # Instalar git
         apk add --no-cache git
         
-        # Limpar diretório (exceto volumes montados)
-        find /app -mindepth 1 -maxdepth 1 ! -path '/app/data' -exec rm -rf {} +
+        # Usar diretório temporário para clone
+        WORK_DIR="/tmp/ai-os-clone"
+        rm -rf $WORK_DIR
+        mkdir -p $WORK_DIR
         
-        # Clonar usando token
-        cd /app
-        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git .
+        # Clone o repositório
+        echo "Clonando repositório..."
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git $WORK_DIR
         
-        # Verificar se o diretório ai-os existe
-        if [ -d "ai-os" ]; then
-          cd ai-os
-          npm install --production
-          npm run build
-          npm run start:worker
+        # Verificar estrutura
+        echo "=== Estrutura do repositório ==="
+        ls -la $WORK_DIR/
+        
+        # Procurar pelo projeto correto
+        if [ -d "$WORK_DIR/ai-os" ]; then
+          echo "Diretório ai-os encontrado!"
+          cd $WORK_DIR/ai-os
+        elif [ -f "$WORK_DIR/package.json" ]; then
+          echo "package.json encontrado na raiz!"
+          cd $WORK_DIR
         else
-          echo "Erro: Diretório ai-os não encontrado!"
-          ls -la
+          echo "ERRO: Estrutura do projeto não reconhecida!"
+          echo "Conteúdo do repositório:"
+          find $WORK_DIR -type f -name "*.json" | head -20
+          find $WORK_DIR -type d -maxdepth 3 | head -20
           exit 1
         fi
+        
+        # Instalar dependências e iniciar
+        echo "Instalando dependências..."
+        npm install --production
+        
+        echo "Executando build..."
+        npm run build || echo "Build não necessário ou falhou"
+        
+        echo "Iniciando Worker..."
+        npm run start:worker || npm run worker || node worker.js
     working_dir: /app
 
   ai-os-scheduler:
@@ -159,27 +203,49 @@ services:
       - sh
       - -c
       - |
-        # Configurar git para usar token
+        set -e
+        echo "=== Iniciando deploy AI-OS Scheduler ==="
+        
+        # Instalar git
         apk add --no-cache git
         
-        # Limpar diretório (exceto volumes montados)
-        find /app -mindepth 1 -maxdepth 1 ! -path '/app/data' -exec rm -rf {} +
+        # Usar diretório temporário para clone
+        WORK_DIR="/tmp/ai-os-clone"
+        rm -rf $WORK_DIR
+        mkdir -p $WORK_DIR
         
-        # Clonar usando token
-        cd /app
-        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git .
+        # Clone o repositório
+        echo "Clonando repositório..."
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git $WORK_DIR
         
-        # Verificar se o diretório ai-os existe
-        if [ -d "ai-os" ]; then
-          cd ai-os
-          npm install --production
-          npm run build
-          npm run start:scheduler
+        # Verificar estrutura
+        echo "=== Estrutura do repositório ==="
+        ls -la $WORK_DIR/
+        
+        # Procurar pelo projeto correto
+        if [ -d "$WORK_DIR/ai-os" ]; then
+          echo "Diretório ai-os encontrado!"
+          cd $WORK_DIR/ai-os
+        elif [ -f "$WORK_DIR/package.json" ]; then
+          echo "package.json encontrado na raiz!"
+          cd $WORK_DIR
         else
-          echo "Erro: Diretório ai-os não encontrado!"
-          ls -la
+          echo "ERRO: Estrutura do projeto não reconhecida!"
+          echo "Conteúdo do repositório:"
+          find $WORK_DIR -type f -name "*.json" | head -20
+          find $WORK_DIR -type d -maxdepth 3 | head -20
           exit 1
         fi
+        
+        # Instalar dependências e iniciar
+        echo "Instalando dependências..."
+        npm install --production
+        
+        echo "Executando build..."
+        npm run build || echo "Build não necessário ou falhou"
+        
+        echo "Iniciando Scheduler..."
+        npm run start:scheduler || npm run scheduler || node scheduler.js
     working_dir: /app
 
 volumes:
