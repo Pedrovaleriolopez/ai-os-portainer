@@ -22,6 +22,7 @@ services:
       - ORCHESTRATOR_API_KEY=${ORCHESTRATOR_API_KEY}
       - UNIVERSAL_MEMORY_API_KEY=${UNIVERSAL_MEMORY_API_KEY}
       - CLAUDE_CODE_API_KEY=${CLAUDE_CODE_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       - ai-os-data:/app/data
     deploy:
@@ -46,11 +47,15 @@ services:
       - sh
       - -c
       - |
-        # Limpar diretório e clonar
-        rm -rf /app/*
-        cd /app
+        # Configurar git para usar token
         apk add --no-cache git
-        git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
+        
+        # Limpar diretório (exceto volumes montados)
+        find /app -mindepth 1 -maxdepth 1 ! -path '/app/data' -exec rm -rf {} +
+        
+        # Clonar usando token
+        cd /app
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git .
         
         # Verificar se o diretório ai-os existe
         if [ -d "ai-os" ]; then
@@ -88,6 +93,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       - ai-os-data:/app/data
     deploy:
@@ -103,11 +109,15 @@ services:
       - sh
       - -c
       - |
-        # Limpar diretório e clonar
-        rm -rf /app/*
-        cd /app
+        # Configurar git para usar token
         apk add --no-cache git
-        git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
+        
+        # Limpar diretório (exceto volumes montados)
+        find /app -mindepth 1 -maxdepth 1 ! -path '/app/data' -exec rm -rf {} +
+        
+        # Clonar usando token
+        cd /app
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git .
         
         # Verificar se o diretório ai-os existe
         if [ -d "ai-os" ]; then
@@ -135,6 +145,7 @@ services:
       - POSTGRES_DB=ai_os
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     deploy:
       replicas: 1
       resources:
@@ -148,11 +159,15 @@ services:
       - sh
       - -c
       - |
-        # Limpar diretório e clonar
-        rm -rf /app/*
-        cd /app
+        # Configurar git para usar token
         apk add --no-cache git
-        git clone https://github.com/Pedrovaleriolopez/allfluence-core.git .
+        
+        # Limpar diretório (exceto volumes montados)
+        find /app -mindepth 1 -maxdepth 1 ! -path '/app/data' -exec rm -rf {} +
+        
+        # Clonar usando token
+        cd /app
+        git clone https://${GITHUB_TOKEN}@github.com/Pedrovaleriolopez/allfluence-core.git .
         
         # Verificar se o diretório ai-os existe
         if [ -d "ai-os" ]; then
